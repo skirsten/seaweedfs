@@ -66,7 +66,7 @@ func downloadToFile(masterFn operation.GetMasterFn, grpcDialOption grpc.DialOpti
 	if err != nil {
 		return err
 	}
-	defer util.CloseResponse(rc)
+	defer rc.Body.Close()
 	if filename == "" {
 		filename = fileId
 	}
@@ -118,7 +118,7 @@ func fetchContent(masterFn operation.GetMasterFn, grpcDialOption grpc.DialOption
 	if filename, _, rc, e = util.DownloadFile(fileUrl, jwt); e != nil {
 		return "", nil, e
 	}
-	defer util.CloseResponse(rc)
+	defer rc.Body.Close()
 	content, e = io.ReadAll(rc.Body)
 	return
 }

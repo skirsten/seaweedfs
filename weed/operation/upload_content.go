@@ -268,7 +268,7 @@ func upload_content(fillBufferFunction func(w io.Writer) error, originalDataSize
 		return nil, fmt.Errorf("upload %s %d bytes to %v: %v", option.Filename, originalDataSize, option.UploadUrl, post_err)
 	}
 	// print("-")
-	defer util.CloseResponse(resp)
+	defer resp.Body.Close()
 
 	var ret UploadResult
 	etag := getEtag(resp)

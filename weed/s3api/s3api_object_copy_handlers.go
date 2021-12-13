@@ -2,16 +2,16 @@ package s3api
 
 import (
 	"fmt"
-	"github.com/chrislusf/seaweedfs/weed/glog"
-	xhttp "github.com/chrislusf/seaweedfs/weed/s3api/http"
-	"github.com/chrislusf/seaweedfs/weed/s3api/s3err"
-	weed_server "github.com/chrislusf/seaweedfs/weed/server"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/chrislusf/seaweedfs/weed/glog"
+	xhttp "github.com/chrislusf/seaweedfs/weed/s3api/http"
+	"github.com/chrislusf/seaweedfs/weed/s3api/s3err"
+	weed_server "github.com/chrislusf/seaweedfs/weed/server"
 	"github.com/chrislusf/seaweedfs/weed/util"
 )
 
@@ -79,7 +79,7 @@ func (s3a *S3ApiServer) CopyObjectHandler(w http.ResponseWriter, r *http.Request
 		s3err.WriteErrorResponse(w, r, s3err.ErrInvalidCopySource)
 		return
 	}
-	defer util.CloseResponse(resp)
+	defer resp.Body.Close()
 
 	glog.V(2).Infof("copy from %s to %s", srcUrl, dstUrl)
 	etag, errCode := s3a.putToFiler(r, dstUrl, resp.Body)

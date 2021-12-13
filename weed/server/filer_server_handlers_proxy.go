@@ -1,11 +1,11 @@
 package weed_server
 
 import (
-	"github.com/chrislusf/seaweedfs/weed/glog"
-	"github.com/chrislusf/seaweedfs/weed/util"
 	"io"
 	"math/rand"
 	"net/http"
+
+	"github.com/chrislusf/seaweedfs/weed/glog"
 )
 
 var (
@@ -56,12 +56,12 @@ func (fs *FilerServer) proxyToVolumeServer(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	defer util.CloseResponse(proxyResponse)
+	defer proxyResponse.Body.Close()
 
 	for k, v := range proxyResponse.Header {
 		w.Header()[k] = v
 	}
+
 	w.WriteHeader(proxyResponse.StatusCode)
 	io.Copy(w, proxyResponse.Body)
-
 }

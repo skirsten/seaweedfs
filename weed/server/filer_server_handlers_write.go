@@ -54,7 +54,6 @@ func (fs *FilerServer) assignNewFileInfo(so *operation.StorageOption) (fileId, u
 }
 
 func (fs *FilerServer) PostHandler(w http.ResponseWriter, r *http.Request, contentLength int64) {
-
 	ctx := context.Background()
 
 	query := r.URL.Query()
@@ -76,9 +75,8 @@ func (fs *FilerServer) PostHandler(w http.ResponseWriter, r *http.Request, conte
 		return
 	}
 
+	defer r.Body.Close()
 	fs.autoChunk(ctx, w, r, contentLength, so)
-	util.CloseRequest(r)
-
 }
 
 // curl -X DELETE http://localhost:8888/path/to

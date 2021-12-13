@@ -3,7 +3,6 @@ package filersink
 import (
 	"context"
 	"fmt"
-	"github.com/chrislusf/seaweedfs/weed/util"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -13,6 +12,7 @@ import (
 	"github.com/chrislusf/seaweedfs/weed/pb"
 	"github.com/chrislusf/seaweedfs/weed/pb/filer_pb"
 	"github.com/chrislusf/seaweedfs/weed/security"
+	"github.com/chrislusf/seaweedfs/weed/util"
 )
 
 func (fs *FilerSink) replicateChunks(sourceChunks []*filer_pb.FileChunk, path string) (replicatedChunks []*filer_pb.FileChunk, err error) {
@@ -65,7 +65,7 @@ func (fs *FilerSink) fetchAndWrite(sourceChunk *filer_pb.FileChunk, path string)
 	if err != nil {
 		return "", fmt.Errorf("read part %s: %v", sourceChunk.GetFileIdString(), err)
 	}
-	defer util.CloseResponse(resp)
+	defer resp.Body.Close()
 
 	var host string
 	var auth security.EncodedJwt

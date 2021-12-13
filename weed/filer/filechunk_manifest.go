@@ -3,7 +3,6 @@ package filer
 import (
 	"bytes"
 	"fmt"
-	"github.com/chrislusf/seaweedfs/weed/wdclient"
 	"io"
 	"math"
 	"net/url"
@@ -15,6 +14,7 @@ import (
 	"github.com/chrislusf/seaweedfs/weed/glog"
 	"github.com/chrislusf/seaweedfs/weed/pb/filer_pb"
 	"github.com/chrislusf/seaweedfs/weed/util"
+	"github.com/chrislusf/seaweedfs/weed/wdclient"
 )
 
 const (
@@ -113,8 +113,9 @@ func retriedFetchChunkData(urlStrings []string, cipherKey []byte, isGzipped bool
 			if strings.Contains(urlString, "%") {
 				urlString = url.PathEscape(urlString)
 			}
-			shouldRetry, err = util.ReadUrlAsStream(urlString+"?readDeleted=true", cipherKey, isGzipped, isFullChunk, offset, size, func(data []byte) {
+			shouldRetry, err = util.ReadUrlAsStream(urlString+"?readDeleted=true", cipherKey, isGzipped, isFullChunk, offset, size, func(data []byte) error {
 				receivedData = append(receivedData, data...)
+				return nil
 			})
 			if !shouldRetry {
 				break
@@ -145,20 +146,25 @@ func retriedStreamFetchChunkData(writer io.Writer, urlStrings []string, cipherKe
 	for waitTime := time.Second; waitTime < util.RetryWaitTime; waitTime += waitTime / 2 {
 		for _, urlString := range urlStrings {
 			var localProcesed int
-			shouldRetry, err = util.ReadUrlAsStream(urlString+"?readDeleted=true", cipherKey, isGzipped, isFullChunk, offset, size, func(data []byte) {
+			shouldRetry, err = util.ReadUrlAsStream(urlString+"?readDeleted=true", cipherKey, isGzipped, isFullChunk, offset, size, func(data []byte) error {
 				if totalWritten > localProcesed {
 					toBeSkipped := totalWritten - localProcesed
 					if len(data) <= toBeSkipped {
 						localProcesed += len(data)
-						return // skip if already processed
+						return nil // skip if already processed
 					}
 					data = data[toBeSkipped:]
 					localProcesed += toBeSkipped
 				}
-				writer.Write(data)
+				_, err := writer.Write(data)
+				if err != nil {
+					return err
+				}
 				localProcesed += len(data)
 				totalWritten += len(data)
+				return nil
 			})
+
 			if !shouldRetry {
 				break
 			}

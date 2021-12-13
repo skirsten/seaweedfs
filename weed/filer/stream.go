@@ -297,8 +297,9 @@ func (c *ChunkStreamReader) fetchChunkToBuffer(chunkView *ChunkView) error {
 	var buffer bytes.Buffer
 	var shouldRetry bool
 	for _, urlString := range urlStrings {
-		shouldRetry, err = util.ReadUrlAsStream(urlString+"?readDeleted=true", chunkView.CipherKey, chunkView.IsGzipped, chunkView.IsFullChunk(), chunkView.Offset, int(chunkView.Size), func(data []byte) {
-			buffer.Write(data)
+		shouldRetry, err = util.ReadUrlAsStream(urlString+"?readDeleted=true", chunkView.CipherKey, chunkView.IsGzipped, chunkView.IsFullChunk(), chunkView.Offset, int(chunkView.Size), func(data []byte) error {
+			_, err := buffer.Write(data)
+			return err
 		})
 		if !shouldRetry {
 			break

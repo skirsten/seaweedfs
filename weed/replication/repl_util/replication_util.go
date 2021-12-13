@@ -20,8 +20,9 @@ func CopyFromChunkViews(chunkViews []*filer.ChunkView, filerSource *source.Filer
 		var shouldRetry bool
 
 		for _, fileUrl := range fileUrls {
-			shouldRetry, err = util.ReadUrlAsStream(fileUrl, nil, false, chunk.IsFullChunk(), chunk.Offset, int(chunk.Size), func(data []byte) {
+			shouldRetry, err = util.ReadUrlAsStream(fileUrl, nil, false, chunk.IsFullChunk(), chunk.Offset, int(chunk.Size), func(data []byte) error {
 				writeErr = writeFunc(data)
+				return writeErr
 			})
 			if err != nil {
 				glog.V(1).Infof("read from %s: %v", fileUrl, err)

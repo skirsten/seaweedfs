@@ -101,26 +101,28 @@ func ParseUpload(r *http.Request, sizeLimit int64, bytesBuffer *bytes.Buffer) (p
 }
 
 func parsePut(r *http.Request, sizeLimit int64, pu *ParsedUpload) error {
+	defer r.Body.Close()
+
 	pu.IsGzipped = r.Header.Get("Content-Encoding") == "gzip"
 	// pu.IsZstd = r.Header.Get("Content-Encoding") == "zstd"
 	pu.MimeType = r.Header.Get("Content-Type")
 	pu.FileName = ""
 	dataSize, err := pu.bytesBuffer.ReadFrom(io.LimitReader(r.Body, sizeLimit+1))
-	if err == io.EOF || dataSize == sizeLimit+1 {
-		io.Copy(io.Discard, r.Body)
+	if err != nil {
+		glog.V(0).Infoln("Reading Content [ERROR]", err)
+		return err
+	}
+	if dataSize == sizeLimit+1 {
+		err = fmt.Errorf("file over the limited %d bytes", sizeLimit)
+		return err
 	}
 	pu.Data = pu.bytesBuffer.Bytes()
-	r.Body.Close()
 	return nil
 }
 
 func parseMultipart(r *http.Request, sizeLimit int64, pu *ParsedUpload) (e error) {
-	defer func() {
-		if e != nil && r.Body != nil {
-			io.Copy(io.Discard, r.Body)
-			r.Body.Close()
-		}
-	}()
+	defer r.Body.Close()
+
 	form, fe := r.MultipartReader()
 	if fe != nil {
 		glog.V(0).Infoln("MultipartReader [ERROR]", fe)

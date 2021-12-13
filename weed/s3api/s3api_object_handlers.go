@@ -355,7 +355,7 @@ func (s3a *S3ApiServer) proxyToFiler(w http.ResponseWriter, r *http.Request, des
 		s3err.WriteErrorResponse(w, r, s3err.ErrInternalError)
 		return
 	}
-	defer util.CloseResponse(resp)
+	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusPreconditionFailed {
 		s3err.WriteErrorResponse(w, r, s3err.ErrPreconditionFailed)

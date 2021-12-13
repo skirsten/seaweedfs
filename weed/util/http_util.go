@@ -86,7 +86,7 @@ func Head(url string) (http.Header, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer CloseResponse(r)
+	defer r.Body.Close()
 	if r.StatusCode >= 400 {
 		return nil, fmt.Errorf("%s: %s", url, r.Status)
 	}
@@ -149,7 +149,7 @@ func GetBufferStream(url string, values url.Values, allocatedBytes []byte, eachB
 	if err != nil {
 		return err
 	}
-	defer CloseResponse(r)
+	defer r.Body.Close()
 	if r.StatusCode != 200 {
 		return fmt.Errorf("%s: %s", url, r.Status)
 	}
@@ -172,7 +172,7 @@ func GetUrlStream(url string, values url.Values, readFn func(io.Reader) error) e
 	if err != nil {
 		return err
 	}
-	defer CloseResponse(r)
+	defer r.Body.Close()
 	if r.StatusCode != 200 {
 		return fmt.Errorf("%s: %s", url, r.Status)
 	}
@@ -212,8 +212,9 @@ func ReadUrl(fileUrl string, cipherKey []byte, isContentCompressed bool, isFullC
 
 	if cipherKey != nil {
 		var n int
-		_, err := readEncryptedUrl(fileUrl, cipherKey, isContentCompressed, isFullChunk, offset, size, func(data []byte) {
+		_, err := readEncryptedUrl(fileUrl, cipherKey, isContentCompressed, isFullChunk, offset, size, func(data []byte) error {
 			n = copy(buf, data)
+			return nil
 		})
 		return int64(n), err
 	}
@@ -277,7 +278,7 @@ func ReadUrl(fileUrl string, cipherKey []byte, isContentCompressed bool, isFullC
 	return n, err
 }
 
-func ReadUrlAsStream(fileUrl string, cipherKey []byte, isContentGzipped bool, isFullChunk bool, offset int64, size int, fn func(data []byte)) (retryable bool, err error) {
+func ReadUrlAsStream(fileUrl string, cipherKey []byte, isContentGzipped bool, isFullChunk bool, offset int64, size int, fn func(data []byte) error) (retryable bool, err error) {
 
 	if cipherKey != nil {
 		return readEncryptedUrl(fileUrl, cipherKey, isContentGzipped, isFullChunk, offset, size, fn)
@@ -298,7 +299,7 @@ func ReadUrlAsStream(fileUrl string, cipherKey []byte, isContentGzipped bool, is
 	if err != nil {
 		return true, err
 	}
-	defer CloseResponse(r)
+	defer r.Body.Close()
 	if r.StatusCode >= 400 {
 		retryable = r.StatusCode >= 500
 		return retryable, fmt.Errorf("%s: %s", fileUrl, r.Status)
@@ -321,7 +322,14 @@ func ReadUrlAsStream(fileUrl string, cipherKey []byte, isContentGzipped bool, is
 
 	for {
 		m, err = reader.Read(buf)
-		fn(buf[:m])
+		if err == io.EOF {
+			return false, nil
+		}
+		if err != nil {
+			return true, err
+		}
+
+		err = fn(buf[:m])
 		if err == io.EOF {
 			return false, nil
 		}
@@ -332,7 +340,7 @@ func ReadUrlAsStream(fileUrl string, cipherKey []byte, isContentGzipped bool, is
 
 }
 
-func readEncryptedUrl(fileUrl string, cipherKey []byte, isContentCompressed bool, isFullChunk bool, offset int64, size int, fn func(data []byte)) (bool, error) {
+func readEncryptedUrl(fileUrl string, cipherKey []byte, isContentCompressed bool, isFullChunk bool, offset int64, size int, fn func(data []byte) error) (bool, error) {
 	encryptedData, retryable, err := Get(fileUrl)
 	if err != nil {
 		return retryable, fmt.Errorf("fetch %s: %v", fileUrl, err)
@@ -351,11 +359,16 @@ func readEncryptedUrl(fileUrl string, cipherKey []byte, isContentCompressed bool
 		return false, fmt.Errorf("read decrypted %s size %d [%d, %d)", fileUrl, len(decryptedData), offset, int(offset)+size)
 	}
 	if isFullChunk {
-		fn(decryptedData)
+		e := fn(decryptedData)
+		err = e
 	} else {
-		fn(decryptedData[int(offset) : int(offset)+size])
+		e := fn(decryptedData[int(offset) : int(offset)+size])
+		err = e
 	}
-	return false, nil
+	if err == io.EOF {
+		return false, nil
+	}
+	return false, err
 }
 
 func ReadUrlAsReaderCloser(fileUrl string, rangeHeader string) (io.ReadCloser, error) {
@@ -389,14 +402,4 @@ func ReadUrlAsReaderCloser(fileUrl string, rangeHeader string) (io.ReadCloser, e
 	}
 
 	return reader, nil
-}
-
-func CloseResponse(resp *http.Response) {
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
-}
-
-func CloseRequest(req *http.Request) {
-	io.Copy(io.Discard, req.Body)
-	req.Body.Close()
 }

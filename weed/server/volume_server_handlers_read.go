@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chrislusf/seaweedfs/weed/storage/types"
 	"io"
 	"mime"
 	"net/http"
@@ -22,6 +21,7 @@ import (
 	"github.com/chrislusf/seaweedfs/weed/stats"
 	"github.com/chrislusf/seaweedfs/weed/storage"
 	"github.com/chrislusf/seaweedfs/weed/storage/needle"
+	"github.com/chrislusf/seaweedfs/weed/storage/types"
 	"github.com/chrislusf/seaweedfs/weed/util"
 )
 
@@ -95,7 +95,7 @@ func (vs *VolumeServer) GetOrHeadHandler(w http.ResponseWriter, r *http.Request)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			defer util.CloseResponse(response)
+			defer response.Body.Close()
 			// proxy target response to client
 			for k, vv := range response.Header {
 				for _, v := range vv {
